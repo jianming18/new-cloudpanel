@@ -1,7 +1,7 @@
-import { Boxes, Cloud, Droplets, Layers, Server, type LucideIcon } from 'lucide-react'
+import { Boxes, Cloud, Droplets, Layers, LayoutDashboard, Server, type LucideIcon } from 'lucide-react'
 import { Link } from 'wouter'
 
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRequest } from '@/hooks/use-request'
@@ -89,9 +89,7 @@ export function DashboardPage() {
   ]
 
   return (
-    <>
-      <PageHeader title="仪表盘" description="各云平台资源与账号概览" />
-
+    <PagePanel title="仪表盘" description="各云平台资源与账号概览" icon={LayoutDashboard} bodyClassName="space-y-4 p-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <Link key={card.title} href={card.href}>
@@ -163,6 +161,6 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </PagePanel>
   )
 }

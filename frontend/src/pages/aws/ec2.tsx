@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Play, Power, RefreshCw, RotateCcw, Trash2, Zap } from 'lucide-react'
+import { Boxes, Play, Power, RefreshCw, RotateCcw, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AccountFilter, ALL_ACCOUNTS, useAccountFilter } from '@/components/account-filter'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CredentialsDialog } from '@/components/credentials-dialog'
 import { EmptyState } from '@/components/empty-state'
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { MoreActions } from '@/components/row-actions'
 import { Pagination } from '@/components/pagination'
 import { Toolbar } from '@/components/toolbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -78,9 +77,10 @@ export function Ec2Page() {
 
   return (
     <>
-      <PageHeader
+      <PagePanel
         title="EC2 实例"
         description="管理 AWS EC2 云服务器"
+        icon={Boxes}
         actions={
           <>
             <Button variant="outline" size="icon" title="刷新列表" onClick={reload}>
@@ -89,10 +89,9 @@ export function Ec2Page() {
             <Button onClick={() => setCreateOpen(true)}>创建实例</Button>
           </>
         }
-      />
-
-      <Card>
-        <div className="p-4">
+      >
+        <div>
+          <div className="border-b border-slate-100 px-6 py-4">
           <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / 实例 ID / IP">
             <AccountFilter
               value={accountId}
@@ -103,7 +102,7 @@ export function Ec2Page() {
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-10 w-full" />
             ))}
@@ -172,7 +171,8 @@ export function Ec2Page() {
           onPageChange={setPage}
           onLimitChange={(value) => { setLimit(value); setPage(1) }}
         />
-      </Card>
+        </div>
+      </PagePanel>
 
       <CreateEc2Dialog
         open={createOpen}

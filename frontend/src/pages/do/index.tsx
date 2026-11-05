@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Pencil, RefreshCw, Trash2 } from 'lucide-react'
+import { Droplets, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AccountFilter, ALL_ACCOUNTS, useAccountFilter } from '@/components/account-filter'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CopyButton, CredentialsDialog } from '@/components/credentials-dialog'
 import { EmptyState } from '@/components/empty-state'
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { Pagination } from '@/components/pagination'
 import { Toolbar } from '@/components/toolbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,8 +28,7 @@ import type { DoAccount, Droplet, DropletListData, Paged } from '@/lib/types'
 
 export function DigitalOceanPage() {
   return (
-    <>
-      <PageHeader title="DigitalOcean" description="管理 Droplets 与 API Token" />
+    <PagePanel title="DigitalOcean 实例与账号" description="管理 Droplets 与 API Token" icon={Droplets}>
       <Tabs defaultValue="droplets">
         <TabsList>
           <TabsTrigger value="droplets">Droplets</TabsTrigger>
@@ -39,7 +37,7 @@ export function DigitalOceanPage() {
         <TabsContent value="droplets"><DropletTab /></TabsContent>
         <TabsContent value="account"><DoAccountTab /></TabsContent>
       </Tabs>
-    </>
+    </PagePanel>
   )
 }
 
@@ -76,8 +74,8 @@ function DropletTab() {
 
   return (
     <>
-      <Card>
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / IP" />
           <div className="flex items-center gap-2">
             <AccountFilter
@@ -93,7 +91,7 @@ function DropletTab() {
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
           </div>
         ) : error ? (
@@ -140,7 +138,7 @@ function DropletTab() {
         )}
 
         <Pagination page={page} limit={limit} total={data?.total ?? 0} onPageChange={setPage} onLimitChange={(value) => { setLimit(value); setPage(1) }} />
-      </Card>
+      </div>
 
       <CreateDropletDialog
         open={createOpen}
@@ -212,14 +210,14 @@ function DoAccountTab() {
 
   return (
     <>
-      <Card>
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Toolbar value={keyword} onChange={setKeyword} placeholder="搜索邮箱 / Token" />
           <Button onClick={() => setCreateOpen(true)}>添加账号</Button>
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
           </div>
         ) : error ? (
@@ -268,7 +266,7 @@ function DoAccountTab() {
             </TableBody>
           </Table>
         )}
-      </Card>
+      </div>
 
       <AddDoAccountDialog open={createOpen} onOpenChange={setCreateOpen} onSaved={reload} />
 

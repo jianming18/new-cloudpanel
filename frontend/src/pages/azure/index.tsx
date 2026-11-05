@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Play, Power, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { Layers, Pencil, Play, Power, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AccountFilter, ALL_ACCOUNTS, useAccountFilter } from '@/components/account-filter'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CopyButton, CredentialsDialog } from '@/components/credentials-dialog'
 import { EmptyState } from '@/components/empty-state'
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { MoreActions } from '@/components/row-actions'
 import { Pagination } from '@/components/pagination'
 import { Toolbar } from '@/components/toolbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,8 +30,7 @@ import type { AzureAccount, AzureAccountListData, AzureVm, Paged } from '@/lib/t
 
 export function AzurePage() {
   return (
-    <>
-      <PageHeader title="Azure" description="管理 Azure 订阅与虚拟机" />
+    <PagePanel title="Azure 虚拟机与订阅" description="管理 Azure 订阅与虚拟机" icon={Layers}>
       <Tabs defaultValue="vm">
         <TabsList>
           <TabsTrigger value="vm">虚拟机</TabsTrigger>
@@ -41,7 +39,7 @@ export function AzurePage() {
         <TabsContent value="vm"><AzureVmTab /></TabsContent>
         <TabsContent value="account"><AzureAccountTab /></TabsContent>
       </Tabs>
-    </>
+    </PagePanel>
   )
 }
 
@@ -97,8 +95,8 @@ function AzureVmTab() {
 
   return (
     <>
-      <Card>
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / IP / 账号" />
           <div className="flex items-center gap-2">
             <AccountFilter
@@ -114,7 +112,7 @@ function AzureVmTab() {
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
           </div>
         ) : error ? (
@@ -172,7 +170,7 @@ function AzureVmTab() {
         )}
 
         <Pagination page={page} limit={limit} total={data?.total ?? 0} onPageChange={setPage} onLimitChange={(value) => { setLimit(value); setPage(1) }} />
-      </Card>
+      </div>
 
       <CreateAzureVmDialog
         open={createOpen}
@@ -240,14 +238,14 @@ function AzureAccountTab() {
 
   return (
     <>
-      <Card>
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Toolbar value={keyword} onChange={setKeyword} placeholder="搜索订阅 / 邮箱 / AppID" />
           <Button onClick={() => setCreateOpen(true)}>添加订阅</Button>
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
           </div>
         ) : error ? (
@@ -297,7 +295,7 @@ function AzureAccountTab() {
             </TableBody>
           </Table>
         )}
-      </Card>
+      </div>
 
       <AzureAccountDialog
         open={createOpen || Boolean(editTarget)}
