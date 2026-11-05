@@ -31,6 +31,7 @@ CloudPanel 是一个开源的多云服务管理平台，通过统一的界面管
 - 前后端分离：Django 4.2 RESTful API + React 18 (TypeScript + Vite + pnpm)
 - 容器化部署：Docker Compose 一键拉起（nginx 前端 + Django/Gunicorn 后端 + Redis + Celery）
 - CI/CD：推送自动构建多架构镜像并发布到 ghcr.io
+- 双平台流水线：GitHub Actions 发布到 GHCR，[CNB 云原生构建](./docs/cnb-build.md) 发布到 CNB Docker 制品库
 - 离线依赖构建：后端使用 wheelhouse（预编译 wheel）安装，前端使用 pnpm 全局存储缓存，构建不依赖现场联网解析
 
 ## 快速开始
@@ -140,6 +141,9 @@ docker pull ghcr.io/jianming18/new-cloudpanel/web:latest    # 前端面板
 ├── config/             # supervisor / nginx 配置
 ├── wheels/             # 后端预编译依赖 (wheelhouse, 离线安装用)
 ├── panelProject/       # Django 工程配置
+├── docs/               # 说明文档 (含 CNB 构建说明)
+├── .cnb.yml            # CNB 云原生构建流水线
+├── .github/workflows/  # GitHub Actions 工作流
 └── install.sh          # 一键安装脚本
 ```
 
@@ -147,7 +151,7 @@ docker pull ghcr.io/jianming18/new-cloudpanel/web:latest    # 前端面板
 
 - **后端**：Django 4.2 · Gunicorn · Celery · Redis · SQLite（兼容 MySQL 配置）
 - **前端**：React 18 · TypeScript · Vite · Tailwind CSS · Radix UI · wouter · pnpm
-- **部署**：Docker · Docker Compose · GitHub Actions CI/CD · GHCR
+- **部署**：Docker · Docker Compose · GitHub Actions / CNB 云原生构建 · GHCR / CNB Docker 制品库
 
 ## 开发指南
 
@@ -185,11 +189,26 @@ pnpm build                     # 构建, 产物输出到 ../web
 
 推送到 `main` 分支后，GitHub Actions 自动构建并发布镜像到 ghcr.io：
 
-- **build-api**：使用 CI 内 Python 3.9 环境生成离线 wheelhouse（`pip download`），Dockerfile 以 `pip install --no-index --find-links=/wheels` 离线安装——依赖版本全部锁定，构建过程不联网解析，也不会触发原生模块编译
+- **build-api**：使用 CI 内 Python 3.11 环境生成离线 wheelhouse（`pip download`），Dockerfile 以 `pip install --no-index --find-links=/wheels` 离线安装——依赖版本全部锁定，构建过程不联网解析，也不会触发原生模块编译
 - **build-web**：`pnpm fetch` + `pnpm install --frozen-lockfile --offline`，依赖清单不变时直接命中 Docker 层缓存，秒级完成
 
-> 本地维护依赖后，重新生成 wheelhouse：`pip download -r requirements.txt --platform manylinux2014_x86_64 --implementation cp --python-version 3.9 --only-binary=:all: -d wheels/`
-> （CI 会用 Python 3.9 重新生成并覆盖，通常无需手动操作）
+> 本地维护依赖后，用 Python 3.11 重新生成 wheelhouse：`pip download -r requirements.txt --only-binary=:all: -d wheels/`
+> （GitHub Actions 会在每次构建时用 Python 3.11 重新生成并覆盖，通常无需手动操作）
+
+### CNB 云原生构建
+
+除 GitHub Actions 外，仓库还提供 [`.cnb.yml`](.cnb.yml)，在 CNB 上构建并发布镜像到
+**CNB Docker 制品库**（`docker.cnb.cool/...`），与 GHCR 互不干扰：
+
+| 事件 | 行为 |
+|---|---|
+| `main` 分支 `push` | 构建并推送前后端镜像，Tag 为 `latest` + 短 SHA |
+| `main` 分支 `pull_request` | 仅构建校验，不推送制品 |
+| 任意 `tag_push` | 构建并推送版本镜像（`v1.2.3` → `1.2.3`）与 `latest` |
+
+流水线通过内置 `CNB_TOKEN` 免密登录制品库，无需配置额外密钥；后端直接使用仓库内提交的
+`wheels/` 离线安装依赖。完整配置说明、触发规则、徽章与排障见
+[docs/cnb-build.md](./docs/cnb-build.md)。
 
 ## 环境变量
 

@@ -1,0 +1,77 @@
+# CloudPanel · CNB 云原生构建
+#
+# 触发与产物（完整说明见 docs/cnb-build.md）：
+#   main 分支 push         -> 构建并推送 api / web 镜像，tag 为 latest + <8 位短 sha>
+#   main 分支 pull_request -> 仅构建校验，不登录制品库、不推送（PR 事件令牌权限受限）
+#   任意 tag_push          -> 构建并推送 api / web 镜像，tag 为 <版本号> + latest
+#
+# 镜像发布到 CNB Docker 制品库：
+#   ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}      后端 API
+#   ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/web   前端面板
+
+# 三个事件复用同一组 stages，仅用 PUSH 控制是否登录与推送。
+# 点号开头的顶层 key 只作为 YAML 锚点，不会被解析为分支名。
+.build-pipeline: &build-pipeline
+  services:
+    - docker
+  env:
+    PUSH: "true"
+  stages:
+    - name: 登录 CNB Docker 制品库
+      script: |
+        if [ "${PUSH}" != "true" ]; then
+          echo "PR 构建校验：跳过制品库登录与推送"
+          exit 0
+        fi
+        echo "${CNB_TOKEN}" | docker login "${CNB_DOCKER_REGISTRY}" \
+          -u "${CNB_TOKEN_USER_NAME}" --password-stdin
+
+    - name: 构建并推送后端镜像
+      script: |
+        set -e
+        VERSION="${CNB_COMMIT_SHORT}"
+        if [ "${CNB_IS_TAG}" = "true" ] || [ "${CNB_EVENT}" = "tag_push" ]; then
+          VERSION="${CNB_BRANCH#v}"
+        fi
+        IMAGE="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+        echo "构建 ${IMAGE}:${VERSION}"
+        docker build -f Dockerfile \
+          --build-arg "VERSION=${VERSION}" \
+          -t "${IMAGE}:${VERSION}" -t "${IMAGE}:latest" .
+        if [ "${PUSH}" = "true" ]; then
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:latest"
+        fi
+
+    - name: 构建并推送前端镜像
+      script: |
+        set -e
+        VERSION="${CNB_COMMIT_SHORT}"
+        if [ "${CNB_IS_TAG}" = "true" ] || [ "${CNB_EVENT}" = "tag_push" ]; then
+          VERSION="${CNB_BRANCH#v}"
+        fi
+        IMAGE="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/web"
+        echo "构建 ${IMAGE}:${VERSION}"
+        docker build -f Dockerfile.frontend \
+          --build-arg "VERSION=${VERSION}" \
+          -t "${IMAGE}:${VERSION}" -t "${IMAGE}:latest" .
+        if [ "${PUSH}" = "true" ]; then
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:latest"
+        fi
+
+main:
+  push:
+    - <<: *build-pipeline
+      name: 构建并发布镜像
+  pull_request:
+    - <<: *build-pipeline
+      name: PR 构建校验
+      env:
+        PUSH: "false"
+
+# tag_push 与分支无关，按 CNB 约定挂在 $ 兜底分支下，匹配所有 Tag
+$:
+  tag_push:
+    - <<: *build-pipeline
+      name: 发布版本镜像
