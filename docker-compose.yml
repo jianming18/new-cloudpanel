@@ -1,0 +1,56 @@
+# version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    container_name: panel_redis
+    restart: always
+    networks:
+      - panel_network
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    image: ghcr.io/jianming18/new-cloudpanel/web:${IMAGE_TAG:-latest}
+    container_name: cloudpanel-web
+    restart: always
+    ports:
+        - "${FRONTENDPORT:-8086}:80"
+    depends_on:
+        - api
+    networks:
+        - panel_network
+
+  api:
+    image: ghcr.io/jianming18/new-cloudpanel:${IMAGE_TAG:-latest}
+    platform: linux/amd64
+    container_name: cloudpanel-api
+    restart: always
+    ports:
+      - "${BACKENDPORT:-889}:889"
+    networks:
+      panel_network:
+        aliases:
+          - api
+    volumes:
+      - ./data:/home/python/panel/data
+      - ./logs:/home/python/panel/logs
+    environment:
+      SQLITE_PATH: /home/python/panel/data/db.sqlite3
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:889/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  panel_network:
+    driver: bridge

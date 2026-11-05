@@ -1,0 +1,5 @@
+# 服务器本地部署用: 直接使用已构建好的 web/ 静态产物, 跳过 npm 编译
+FROM nginx:alpine
+
+COPY web/ /usr/share/nginx/html/
+COPY config/nginx-frontend.conf /etc/nginx/nginx.conf

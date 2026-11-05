@@ -1,0 +1,25 @@
+# ---- 前端构建阶段 (pnpm + 全局存储缓存) ----
+FROM node:22-alpine AS build
+
+WORKDIR /app/frontend
+
+# 启用 corepack 提供的 pnpm (版本由 package.json 的 packageManager 字段锁定)
+RUN corepack enable
+
+# 先只复制依赖清单: 锁文件不变时, pnpm fetch 层直接命中缓存, 秒级完成
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm fetch
+
+COPY frontend/ ./
+# --offline 全部依赖已在本地 store 中, 不再访问网络
+RUN pnpm install --frozen-lockfile --offline && pnpm run build
+
+# ---- nginx 运行阶段 ----
+FROM nginx:alpine
+
+ARG VERSION=dev
+COPY --from=build /app/web /usr/share/nginx/html/
+# 把构建版本号写进 index.html 的 meta 标签
+RUN sed -i "s|__VERSION__|${VERSION}|g" /usr/share/nginx/html/index.html || true
+
+COPY config/nginx-frontend.conf /etc/nginx/nginx.conf
