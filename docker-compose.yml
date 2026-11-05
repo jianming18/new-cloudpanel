@@ -16,7 +16,7 @@ services:
       retries: 5
 
   web:
-    image: ghcr.io/jianming18/new-cloudpanel/web:${IMAGE_TAG:-latest}
+    image: ${IMAGE_BASE:-ghcr.io/jianming18/new-cloudpanel}/web:${IMAGE_TAG:-latest}
     container_name: cloudpanel-web
     restart: always
     ports:
@@ -27,7 +27,7 @@ services:
         - panel_network
 
   api:
-    image: ghcr.io/jianming18/new-cloudpanel:${IMAGE_TAG:-latest}
+    image: ${IMAGE_BASE:-ghcr.io/jianming18/new-cloudpanel}:${IMAGE_TAG:-latest}
     platform: linux/amd64
     container_name: cloudpanel-api
     restart: always

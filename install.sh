@@ -18,6 +18,25 @@ INSTALL_DIR="/opt/cloudpanel"
 SERVICE_CONTAINER="cloudpanel-api"
 COMPOSE_SVC="api"
 
+# 安装源：github 为默认（GHCR + raw.githubusercontent.com）；
+# 传入 --cnb 后改用 CNB 仓库与 CNB Docker 制品库，国内网络更稳
+SOURCE="github"
+if [ "${1:-}" = "--cnb" ]; then
+    SOURCE="cnb"
+    shift
+fi
+
+case "$SOURCE" in
+    cnb)
+        RAW_BASE="https://cnb.cool/mrzhang193/new-cloudpanel/-/git/raw/main"
+        IMAGE_BASE="docker.cnb.cool/mrzhang193/new-cloudpanel"
+        ;;
+    *)
+        RAW_BASE="https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/heads/main"
+        IMAGE_BASE="ghcr.io/jianming18/new-cloudpanel"
+        ;;
+esac
+
 # 日志函数
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -33,6 +52,18 @@ log_error() {
 
 log_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
+}
+
+# 带重试的下载：远程 CDN 偶发连接重置，且失败时不留下截断的目标文件
+fetch_file() {
+    local url="$1" dest="$2"
+    local tmp="${dest}.tmp.$$"
+    if curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 120 "$url" -o "$tmp"; then
+        mv -f "$tmp" "$dest"
+    else
+        rm -f "$tmp"
+        return 1
+    fi
 }
 
 # 检查 root 权限
@@ -108,7 +139,17 @@ install_compose() {
 
 # 获取最新版本号
 get_latest_tag() {
-    local tag=$(curl -sf https://api.github.com/repos/jianming18/new-cloudpanel/tags | grep -o '"name":[[:space:]]*"v[^"]*"' | head -1 | grep -o 'v[0-9.]*' || echo "")
+    # CNB 制品库的 latest 由流水线在每次 main 推送时更新，无需再查 Tag 列表
+    if [ "$SOURCE" = "cnb" ]; then
+        echo "latest"
+        return
+    fi
+
+    local tag
+    tag=$(curl -sf --max-time 10 https://api.github.com/repos/jianming18/new-cloudpanel/tags \
+        | grep -o '"name":[[:space:]]*"v[0-9][^"]*"' \
+        | grep -o 'v[0-9.]*' \
+        | sort -V | tail -1)
     if [ -n "$tag" ]; then
         echo "${tag#v}"
     else
@@ -143,9 +184,10 @@ do_uninstall() {
     log_step "正在删除安装目录..."
     rm -rf "$INSTALL_DIR"
     
-    # 清理 Docker 镜像
+    # 清理 Docker 镜像（两种安装源的镜像都清掉）
     log_info "清理 Docker 镜像..."
     docker rmi ghcr.io/jianming18/new-cloudpanel:latest 2>/dev/null || true
+    docker rmi docker.cnb.cool/mrzhang193/new-cloudpanel:latest 2>/dev/null || true
     docker image prune -f
 
     echo ""
@@ -159,6 +201,7 @@ do_update() {
     echo -e "${BLUE}======================================${NC}"
     echo -e "${BLUE}  CloudPanel 升级更新${NC}"
     echo -e "${BLUE}======================================${NC}"
+    log_info "安装源: ${SOURCE} (${IMAGE_BASE})"
 
     if [ ! -d "$INSTALL_DIR" ]; then
         log_error "未找到安装目录 ${INSTALL_DIR}，请先执行安装"
@@ -167,36 +210,85 @@ do_update() {
 
     cd "$INSTALL_DIR"
 
-    log_step "正在备份配置文件..."
-    cp .env .env.bak 2>/dev/null || true
+    local backup_dir="${INSTALL_DIR}/backups/$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+    log_step "正在备份配置文件到 ${backup_dir}..."
+    cp .env "$backup_dir/.env" 2>/dev/null || true
+    cp docker-compose.yml "$backup_dir/docker-compose.yml" 2>/dev/null || true
+    cp config/nginx.conf "$backup_dir/nginx.conf" 2>/dev/null || true
 
     log_step "正在检查最新版本..."
     local latest_tag=$(get_latest_tag)
     if [ -f .env ]; then
-        local current_tag=$(sed -n 's/^IMAGE_TAG=//p' .env 2>/dev/null || echo "latest")
-        if [ "$current_tag" = "latest" ] && [ "$latest_tag" != "latest" ]; then
-            log_info "更新 IMAGE_TAG: latest → ${latest_tag}"
-            sed -i "s/IMAGE_TAG=.*/IMAGE_TAG=${latest_tag}/" .env
+        local current_tag=$(sed -n 's/^IMAGE_TAG=//p' .env 2>/dev/null)
+        if [ -z "$current_tag" ]; then
+            current_tag="latest"
+        fi
+        # 旧版本若已固定到某个 tag，只在 tag 为 latest 时更新会让 update 永远停在旧版
+        if [ "$latest_tag" != "latest" ] && [ "$current_tag" != "$latest_tag" ]; then
+            log_info "更新 IMAGE_TAG: ${current_tag} → ${latest_tag}"
+            if grep -q '^IMAGE_TAG=' .env; then
+                sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${latest_tag}/" .env
+            else
+                echo "IMAGE_TAG=${latest_tag}" >> .env
+            fi
+        fi
+    fi
+
+    # 让新下载的 compose 使用当前安装源对应的镜像仓库；升级时沿用同一个 --cnb 开关
+    if [ -f .env ]; then
+        if grep -q '^IMAGE_BASE=' .env; then
+            sed -i "s|^IMAGE_BASE=.*|IMAGE_BASE=${IMAGE_BASE}|" .env
+        else
+            echo "IMAGE_BASE=${IMAGE_BASE}" >> .env
         fi
     fi
 
     log_step "正在下载最新配置文件..."
-    local BASE_URL="https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/heads/main"
-    curl -fsSL "${BASE_URL}/docker-compose.yml" -o docker-compose.yml || {
+    local BASE_URL="$RAW_BASE"
+    fetch_file "${BASE_URL}/docker-compose.yml" docker-compose.yml || {
         log_error "下载 docker-compose.yml 失败"
         exit 1
     }
 
     mkdir -p config
-    curl -fsSL "${BASE_URL}/config/nginx.conf" -o config/nginx.conf || {
+    fetch_file "${BASE_URL}/config/nginx.conf" config/nginx.conf || {
         log_error "下载 nginx.conf 失败"
         exit 1
     }
 
     prepare_sqlite_storage
-    
+
+    # 镜像仓库长连接偶发被重置；已下载的层按 digest 缓存，重试可续传，
+    # 不要让一次抖动中止整个升级。
     log_info "正在拉取最新镜像..."
-    docker compose pull
+    local pull_ok=0 attempt
+    for attempt in 1 2 3; do
+        if docker compose pull; then
+            pull_ok=1
+            break
+        fi
+        log_warn "镜像拉取失败（第 ${attempt}/3 次），已下载的层会保留，稍后重试..."
+        if [ "$attempt" -lt 3 ]; then
+            sleep 5
+        fi
+    done
+
+    if [ "$pull_ok" -ne 1 ]; then
+        # 回滚配置，避免留下「新 compose + 旧镜像」的半升级状态
+        cp "$backup_dir/.env" .env 2>/dev/null || true
+        cp "$backup_dir/docker-compose.yml" docker-compose.yml 2>/dev/null || true
+        cp "$backup_dir/nginx.conf" config/nginx.conf 2>/dev/null || true
+        log_error "镜像拉取失败，升级已中止；正在运行的旧版本服务未受影响。"
+        if [ "$SOURCE" = "cnb" ]; then
+            log_error "原因：访问 CNB (docker.cnb.cool / cnb.cool) 的连接被重置。"
+        else
+            log_error "原因：访问 GitHub CDN (ghcr.io / raw.githubusercontent.com) 的连接被重置。"
+        fi
+        log_error "处理：可改用另一安装源（--cnb）、为 Docker 配置代理或镜像加速后重新执行 update，或稍后重试（层会续传）。"
+        log_error "配置备份位于：${backup_dir}"
+        exit 1
+    fi
 
     log_step "正在重启服务..."
     docker compose up -d
@@ -221,6 +313,7 @@ do_install() {
     echo -e "${GREEN}  CloudPanel 一键安装脚本${NC}"
     echo -e "${GREEN}======================================${NC}"
     echo ""
+    log_info "安装源: ${SOURCE} (${IMAGE_BASE})"
 
     check_root
     detect_os
@@ -242,13 +335,13 @@ do_install() {
     mkdir -p "$INSTALL_DIR"/{data,logs,config}
 
     log_step "下载配置文件..."
-    local BASE_URL="https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/heads/main"
-    curl -fsSL "${BASE_URL}/docker-compose.yml" -o "$INSTALL_DIR/docker-compose.yml" || {
+    local BASE_URL="$RAW_BASE"
+    fetch_file "${BASE_URL}/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml" || {
         log_error "下载 docker-compose.yml 失败"
         exit 1
     }
 
-    curl -fsSL "${BASE_URL}/config/nginx.conf" -o "$INSTALL_DIR/config/nginx.conf" || {
+    fetch_file "${BASE_URL}/config/nginx.conf" "$INSTALL_DIR/config/nginx.conf" || {
         log_error "下载 nginx.conf 失败"
         exit 1
     }
@@ -277,6 +370,9 @@ TZ=Asia/Shanghai
 DJANGO_SECRET_KEY=${SECRET_KEY}
 ALLOWED_HOSTS=*
 CORS_ALLOWED_ORIGINS=http://localhost:8086,http://127.0.0.1:8086
+
+# 镜像仓库前缀 (由安装源决定: GHCR / CNB Docker 制品库)
+IMAGE_BASE=${IMAGE_BASE}
 
 # 镜像版本 (latest=最新版, 或指定版本如 1.0.0)
 IMAGE_TAG=$(get_latest_tag)

@@ -34,12 +34,14 @@ GitHub Actions 发布到 `ghcr.io`，CNB 流水线发布到 `docker.cnb.cool`，
 推送后可直接拉取使用：
 
 ```bash
-docker pull docker.cnb.cool/<组织>/<仓库>:latest
-docker pull docker.cnb.cool/<组织>/<仓库>/web:latest
+docker pull docker.cnb.cool/mrzhang193/new-cloudpanel:latest
+docker pull docker.cnb.cool/mrzhang193/new-cloudpanel/web:latest
 ```
 
-如需让 `docker-compose.yml` 改用 CNB 镜像，把其中的 `ghcr.io/jianming18/new-cloudpanel`
-替换为上面的地址即可（`IMAGE_TAG` 环境变量同样适用）。
+如需让 `docker-compose.yml` 改用 CNB 镜像，在 `.env` 中设置
+`IMAGE_BASE=docker.cnb.cool/mrzhang193/new-cloudpanel` 即可（`IMAGE_TAG` 同样适用）；
+不设置时默认仍是 GHCR。一键安装脚本传入 `--cnb` 会自动写好这一项，
+详见 [README 快速开始](../README.md#一键安装推荐)。
 
 ## 流水线结构
 

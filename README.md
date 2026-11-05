@@ -38,9 +38,21 @@ CloudPanel 是一个开源的多云服务管理平台，通过统一的界面管
 
 ### 一键安装（推荐）
 
+GitHub 源（默认）：
+
 ```bash
 bash <(curl -L https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/heads/main/install.sh)
 ```
+
+CNB 源（国内推荐，脚本、配置文件与镜像均从 `cnb.cool` 拉取）：
+
+```bash
+bash <(curl -L https://cnb.cool/mrzhang193/new-cloudpanel/-/git/raw/main/install.sh) --cnb
+```
+
+`--cnb` 会把配置文件源切到 CNB 仓库、镜像源切到 CNB Docker 制品库
+（`docker.cnb.cool/mrzhang193/new-cloudpanel`）；不加则沿用 GHCR + GitHub。
+升级时请沿用同一个源：用 `--cnb` 安装的就用 `--cnb update`。
 
 脚本将自动完成 Docker 安装、环境配置、镜像拉取、服务启动，并初始化默认管理员。
 
@@ -57,11 +69,17 @@ bash <(curl -L https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/
 **更多命令：**
 
 ```bash
-# 一键升级
+# 一键升级（GitHub 源）
 bash <(curl -L https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/heads/main/install.sh) update
 
-# 一键卸载
+# 一键卸载（GitHub 源）
 bash <(curl -L https://raw.githubusercontent.com/jianming18/new-cloudpanel/refs/heads/main/install.sh) uninstall
+
+# 一键升级（CNB 源）
+bash <(curl -L https://cnb.cool/mrzhang193/new-cloudpanel/-/git/raw/main/install.sh) --cnb update
+
+# 一键卸载（CNB 源）
+bash <(curl -L https://cnb.cool/mrzhang193/new-cloudpanel/-/git/raw/main/install.sh) --cnb uninstall
 ```
 
 ### 手动部署
@@ -101,8 +119,13 @@ docker compose up -d
 ### 镜像直拉
 
 ```bash
+# GitHub Container Registry
 docker pull ghcr.io/jianming18/new-cloudpanel:latest        # 后端 API
 docker pull ghcr.io/jianming18/new-cloudpanel/web:latest    # 前端面板
+
+# CNB Docker 制品库（由 .cnb.yml 流水线发布）
+docker pull docker.cnb.cool/mrzhang193/new-cloudpanel:latest        # 后端 API
+docker pull docker.cnb.cool/mrzhang193/new-cloudpanel/web:latest    # 前端面板
 ```
 
 ## 系统要求
@@ -216,6 +239,8 @@ pnpm build                     # 构建, 产物输出到 ../web
 
 | 变量 | 说明 | 默认 |
 |---|---|---|
+| `IMAGE_BASE` | 镜像仓库前缀；切换 CNB 制品库时设为 `docker.cnb.cool/mrzhang193/new-cloudpanel` | `ghcr.io/jianming18/new-cloudpanel` |
+| `IMAGE_TAG` | 镜像版本，`latest` 为最新版，可指定版本号 | `latest` |
 | `DEBUG` | 调试模式，生产必须为 `0` | `0` |
 | `DJANGO_SECRET_KEY` | 安全密钥，**生产必填随机值** | 空 |
 | `FRONTENDPORT` | 面板对外端口 | `8086` |
