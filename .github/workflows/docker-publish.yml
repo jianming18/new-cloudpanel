@@ -22,10 +22,10 @@ jobs:
         uses: actions/checkout@v5
 
       # 用目标运行时的 Python 版本生成离线 wheelhouse, 保证环境标记(如 async-timeout)正确解析
-      - name: Set up Python 3.9 for wheelhouse
+      - name: Set up Python 3.11 for wheelhouse
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: Download wheels for offline install
         run: "pip download -r requirements.txt --only-binary=:all: -d wheels/"

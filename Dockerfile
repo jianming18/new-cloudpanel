@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM python:3.9-slim
+FROM --platform=$TARGETPLATFORM python:3.11-slim
 
 ARG VERSION=dev
 LABEL maintainer="jianming18"
