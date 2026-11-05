@@ -40,7 +40,7 @@ export function Pagination({
   const to = Math.min(current * limit, total)
 
   return (
-    <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" title="第一页" disabled={current <= 1} onClick={() => onPageChange(1)}>
           <ChevronsLeft className="h-4 w-4" />

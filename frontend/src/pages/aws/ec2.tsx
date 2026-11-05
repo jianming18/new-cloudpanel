@@ -133,6 +133,7 @@ export function Ec2Page() {
       <PagePanel
         title="EC2 实例管理"
         icon={ChartColumn}
+        fill
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <span className="text-base leading-none">+</span>
@@ -140,7 +141,7 @@ export function Ec2Page() {
           </Button>
         }
       >
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / 实例 ID / IP">
               <AccountFilter
                 value={accountId}
@@ -158,36 +159,39 @@ export function Ec2Page() {
               </Button>
             </Toolbar>
 
-          {loading ? (
-            <div className="space-y-2 px-6 py-4">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : error ? (
-            <EmptyState title="加载失败" description={error} action={<Button variant="outline" onClick={reload}>重试</Button>} />
-          ) : items.length === 0 ? (
-            <EmptyState title="暂无实例" description="点击右上角「添加」开始" />
-          ) : (
-            <DataTable
-              columns={columns}
-              items={items}
-              rowKey={(item) => item.id}
-              expandable
-              expandedId={expandedId}
-              onToggleExpand={(item) => setExpandedId((prev) => (prev === item.id ? null : item.id))}
-              renderExpanded={(item) => (
-                <InstanceDetail
-                  info={{ ip: item.public_ip, username: item.username || 'root', password: item.password, port: '22' }}
-                  extra={[
-                    { label: '名称', value: item.name || '—' },
-                    { label: '所属账号', value: item.account || '—' },
-                    { label: '规格', value: item.instance_type },
-                  ]}
-                />
-              )}
-            />
-          )}
+          <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
+            {loading ? (
+              <div className="space-y-2 px-6 py-4">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : error ? (
+              <EmptyState title="加载失败" description={error} action={<Button variant="outline" onClick={reload}>重试</Button>} />
+            ) : items.length === 0 ? (
+              <EmptyState title="暂无实例" description="点击右上角「添加」开始" />
+            ) : (
+              <DataTable
+                columns={columns}
+                items={items}
+                rowKey={(item) => item.id}
+                expandable
+                expandedId={expandedId}
+                onToggleExpand={(item) => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                renderExpanded={(item) => (
+                  <InstanceDetail
+                    info={{ ip: item.public_ip, username: item.username || 'root', password: item.password, port: '22' }}
+                    extra={[
+                      { label: '名称', value: item.name || '—' },
+                      { label: '所属账号', value: item.account || '—' },
+                      { label: '规格', value: item.instance_type },
+                    ]}
+                  />
+                )}
+              />
+            )}
+
+          </div>
 
           <Pagination
             page={page}

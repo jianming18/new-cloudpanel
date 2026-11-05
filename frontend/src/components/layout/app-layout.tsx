@@ -23,8 +23,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenSidebar={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="mx-auto w-full max-w-[1560px] space-y-5">{children}</div>
+        <main className="flex flex-1 flex-col overflow-y-auto p-4 lg:p-6">
+          <div className="mx-auto flex w-full max-w-[1560px] flex-1 flex-col gap-5">{children}</div>
         </main>
       </div>
     </div>

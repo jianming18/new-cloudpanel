@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Users } from 'lucide-react'
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -44,16 +44,22 @@ interface AccountFilterProps {
 }
 
 export function AccountFilter({ value, onChange, accounts, className }: AccountFilterProps) {
+  // 下拉框只列出具体账号, 不再提供"全部账号"; 账号加载后若当前值无效(含初始的 all)则自动选中第一个
+  useEffect(() => {
+    if (accounts.length === 0) return
+    if (accounts.some((account) => String(account.id) === value)) return
+    onChange(String(accounts[0].id))
+  }, [accounts, value, onChange])
+
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className={cn('h-10 w-full sm:w-[300px]', className)}>
         <span className="flex min-w-0 items-center gap-2">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <SelectValue placeholder="全部账号" className="truncate" />
+          <SelectValue placeholder="选择账号" className="truncate" />
         </span>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ALL_ACCOUNTS}>全部账号</SelectItem>
         {accounts.map((account) => (
           <SelectItem key={account.id} value={String(account.id)} title={account.note || undefined}>
             <span className="flex min-w-0 items-center justify-between gap-3">
