@@ -1,28 +1,27 @@
-import { useEffect, useState } from 'react'
-import { Boxes, Play, Power, RefreshCw, RotateCcw, Trash2, Zap } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChartColumn, Play, Power, RefreshCw, RotateCcw, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AccountFilter, ALL_ACCOUNTS, useAccountFilter } from '@/components/account-filter'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { CredentialsDialog } from '@/components/credentials-dialog'
+import { DataTable, type DataColumn } from '@/components/data-table'
 import { EmptyState } from '@/components/empty-state'
+import { InstanceDetail } from '@/components/instance-detail'
 import { PagePanel } from '@/components/page-panel'
-import { MoreActions } from '@/components/row-actions'
 import { Pagination } from '@/components/pagination'
+import { MoreActions } from '@/components/row-actions'
 import { Toolbar } from '@/components/toolbar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAutoRefresh, useWatchWindow } from '@/hooks/use-auto-refresh'
 import { useDebounced } from '@/hooks/use-debounced'
 import { useRequest } from '@/hooks/use-request'
 import { api } from '@/lib/api'
-import { isTransient, statusLabel, statusTone } from '@/lib/format'
+import { isTransient } from '@/lib/format'
 import { randomName, randomPassword } from '@/lib/utils'
 import type { AwsAccount, AwsRegion, Ec2Instance, Ec2ListData, Paged, ScriptItem } from '@/lib/types'
 
@@ -35,7 +34,7 @@ export function Ec2Page() {
   const [createOpen, setCreateOpen] = useState(false)
   const [pendingId, setPendingId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Ec2Instance | null>(null)
-  const [credTarget, setCredTarget] = useState<Ec2Instance | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const { data, loading, error, reload } = useRequest<Ec2ListData>(
     (signal) =>
@@ -75,102 +74,128 @@ export function Ec2Page() {
   const [watching, startWatch] = useWatchWindow(180_000)
   useAutoRefresh(reload, { active: watching || items.some((item) => isTransient(item.status)) })
 
+  const columns = useMemo<DataColumn<Ec2Instance>[]>(
+    () => [
+      {
+        key: 'instance_id',
+        label: '实例ID',
+        render: (item) => <span className="font-mono text-xs text-slate-700">{item.instance_id}</span>,
+      },
+      {
+        key: 'region',
+        label: '地区',
+        render: (item) => <span className="text-[13px]">{item.region}</span>,
+      },
+      {
+        key: 'image',
+        label: '镜像系统',
+        render: (item) => <span className="text-[13px]">{item.image_name || '—'}</span>,
+      },
+      {
+        key: 'ip',
+        label: 'IP',
+        render: (item) => <span className="font-mono text-xs">{item.public_ip || '—'}</span>,
+      },
+      {
+        key: 'type',
+        label: '型号',
+        render: (item) => <span className="text-[13px]">{item.instance_type}</span>,
+      },
+      {
+        key: 'status',
+        label: '状态',
+        render: (item) => <span className="text-[13px] text-slate-600">{item.status}</span>,
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (item) => (
+          <MoreActions
+            withLabel
+            busy={pendingId === item.id}
+            items={[
+              { label: '开机', icon: Play, onClick: () => runAction(item, 'start') },
+              { label: '关机', icon: Power, onClick: () => runAction(item, 'stop') },
+              { label: '重启', icon: RotateCcw, onClick: () => runAction(item, 'restart') },
+              { label: '更换 IP', icon: Zap, onClick: () => runAction(item, 'reset_ip') },
+              { label: '刷新状态', icon: RefreshCw, onClick: () => runAction(item, 'update') },
+              { label: '终止实例', icon: Trash2, destructive: true, onClick: () => setDeleteTarget(item) },
+            ]}
+          />
+        ),
+      },
+    ],
+    [pendingId],
+  )
+
   return (
     <>
       <PagePanel
-        title="EC2 实例"
-        description="管理 AWS EC2 云服务器"
-        icon={Boxes}
+        title="EC2 实例管理"
+        icon={ChartColumn}
         actions={
-          <>
-            <Button variant="outline" size="icon" title="刷新列表" onClick={reload}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button onClick={() => setCreateOpen(true)}>创建实例</Button>
-          </>
+          <Button onClick={() => setCreateOpen(true)}>
+            <span className="text-base leading-none">+</span>
+            添加
+          </Button>
         }
       >
         <div>
-          <div className="border-b border-slate-100 px-6 py-4">
           <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / 实例 ID / IP">
-            <AccountFilter
-              value={accountId}
-              onChange={(value) => { setAccountId(value); setPage(1) }}
-              accounts={accountOptions}
-            />
-          </Toolbar>
-        </div>
+              <AccountFilter
+                value={accountId}
+                onChange={(value) => { setAccountId(value); setPage(1) }}
+                accounts={accountOptions}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                title="刷新列表"
+                onClick={reload}
+                className="border-slate-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </Toolbar>
 
-        {loading ? (
-          <div className="space-y-2 px-6 py-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : error ? (
-          <EmptyState title="加载失败" description={error} action={<Button variant="outline" onClick={reload}>重试</Button>} />
-        ) : items.length === 0 ? (
-          <EmptyState title="暂无实例" description="点击右上角「创建实例」开始" />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>实例</TableHead>
-                <TableHead>公网 IP</TableHead>
-                <TableHead>规格</TableHead>
-                <TableHead className="hidden xl:table-cell">账号</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id} className="cursor-pointer" onClick={() => setCredTarget(item)}>
-                  <TableCell>
-                    <div className="font-medium">{item.name || '—'}</div>
-                    <div className="font-mono text-xs text-muted-foreground">{item.instance_id}</div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{item.public_ip || '—'}</TableCell>
-                  <TableCell>
-                    <div>{item.instance_type}</div>
-                    <div className="text-xs text-muted-foreground">{item.region}</div>
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground xl:table-cell">{item.account}</TableCell>
-                  <TableCell>
-                    <Badge tone={statusTone(item.status)}>{statusLabel(item.status, item.status_text)}</Badge>
-                  </TableCell>
-                  <TableCell onClick={(event) => event.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" title="开机" disabled={pendingId === item.id} onClick={() => runAction(item, 'start')}>
-                        <Play className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="关机" disabled={pendingId === item.id} onClick={() => runAction(item, 'stop')}>
-                        <Power className="h-4 w-4" />
-                      </Button>
-                      <MoreActions
-                        busy={pendingId === item.id}
-                        items={[
-                          { label: '重启', icon: RotateCcw, onClick: () => runAction(item, 'restart') },
-                          { label: '更换 IP', icon: Zap, onClick: () => runAction(item, 'reset_ip') },
-                          { label: '刷新状态', icon: RefreshCw, onClick: () => runAction(item, 'update') },
-                          { label: '终止实例', icon: Trash2, destructive: true, onClick: () => setDeleteTarget(item) },
-                        ]}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
+          {loading ? (
+            <div className="space-y-2 px-6 py-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-10 w-full" />
               ))}
-            </TableBody>
-          </Table>
-        )}
+            </div>
+          ) : error ? (
+            <EmptyState title="加载失败" description={error} action={<Button variant="outline" onClick={reload}>重试</Button>} />
+          ) : items.length === 0 ? (
+            <EmptyState title="暂无实例" description="点击右上角「添加」开始" />
+          ) : (
+            <DataTable
+              columns={columns}
+              items={items}
+              rowKey={(item) => item.id}
+              expandable
+              expandedId={expandedId}
+              onToggleExpand={(item) => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+              renderExpanded={(item) => (
+                <InstanceDetail
+                  info={{ ip: item.public_ip, username: item.username || 'root', password: item.password, port: '22' }}
+                  extra={[
+                    { label: '名称', value: item.name || '—' },
+                    { label: '所属账号', value: item.account || '—' },
+                    { label: '规格', value: item.instance_type },
+                  ]}
+                />
+              )}
+            />
+          )}
 
-        <Pagination
-          page={page}
-          limit={limit}
-          total={data?.total ?? 0}
-          onPageChange={setPage}
-          onLimitChange={(value) => { setLimit(value); setPage(1) }}
-        />
+          <Pagination
+            page={page}
+            limit={limit}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+            onLimitChange={(value) => { setLimit(value); setPage(1) }}
+          />
         </div>
       </PagePanel>
 
@@ -181,19 +206,6 @@ export function Ec2Page() {
         ec2Types={data?.ec2_types ?? []}
         defaultAccountId={accountId !== ALL_ACCOUNTS ? accountId : ''}
         onCreated={() => { reload(); startWatch() }}
-      />
-
-      <CredentialsDialog
-        open={Boolean(credTarget)}
-        onOpenChange={(open) => !open && setCredTarget(null)}
-        info={credTarget ? {
-          title: credTarget.name || credTarget.instance_id,
-          description: `AWS EC2 实例 ${credTarget.instance_id}`,
-          ip: credTarget.public_ip,
-          username: 'root',
-          password: credTarget.password,
-          port: '22',
-        } : null}
       />
 
       <ConfirmDialog
@@ -209,7 +221,7 @@ export function Ec2Page() {
             toast.success('已提交终止')
             reload()
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : '操作失败')
+            toast.error(err instanceof Error ? err.message : '删除失败')
           }
         }}
       />

@@ -1,13 +1,16 @@
-import { useState } from 'react'
-import { Gauge, Pencil, RefreshCw, Trash2, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ChartColumn, Gauge, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { AccountImportExport, BulkDeleteButton } from '@/components/account-import-export'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTable, type DataColumn } from '@/components/data-table'
 import { EmptyState } from '@/components/empty-state'
 import { PagePanel } from '@/components/page-panel'
 import { Pagination } from '@/components/pagination'
+import { ActionButton, RowActionButtons } from '@/components/row-actions'
+import { useTableSelection } from '@/components/table-selection'
 import { Toolbar } from '@/components/toolbar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -35,6 +38,8 @@ export function AwsAccountsPage() {
   const [editing, setEditing] = useState<AwsAccount | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AwsAccount | null>(null)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
   const [quotaTarget, setQuotaTarget] = useState<AwsAccount | null>(null)
   const [quota, setQuota] = useState<QuotaItem[]>([])
   const [quotaLoading, setQuotaLoading] = useState(false)
@@ -43,6 +48,9 @@ export function AwsAccountsPage() {
     (signal) => api.get<Paged<AwsAccount>>('/aws/account', { page, limit, wd }, signal),
     [page, limit, wd],
   )
+
+  const items = data?.items ?? []
+  const selection = useTableSelection(items, (item) => item.id)
 
   async function syncAccount(item: AwsAccount) {
     try {
@@ -67,86 +75,140 @@ export function AwsAccountsPage() {
     }
   }
 
-  const items = data?.items ?? []
+  const columns = useMemo<DataColumn<AwsAccount>[]>(
+    () => [
+      {
+        key: 'name',
+        label: '账号',
+        render: (item) => (
+          <div className="text-[13px] text-slate-700">{item.name || item.email || '—'}</div>
+        ),
+      },
+      {
+        key: 'key_id',
+        label: 'Access Key',
+        render: (item) => <span className="font-mono text-xs text-slate-500">{maskSecret(item.key_id)}</span>,
+      },
+      {
+        key: 'quota',
+        label: '配额',
+        render: (item) => <span className="tabular-nums text-[13px]">{item.value || '—'}</span>,
+      },
+      {
+        key: 'note',
+        label: '备注',
+        render: (item) => <span className="text-[13px] text-slate-500">{item.note || '—'}</span>,
+      },
+      {
+        key: 'status',
+        label: '状态',
+        render: (item) => <span className="text-[13px] text-slate-600">{item.status ? '可用' : '异常'}</span>,
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (item) => (
+          <RowActionButtons>
+            <ActionButton icon={RefreshCw} title="同步资源" onClick={() => syncAccount(item)} />
+            <ActionButton icon={Gauge} title="查看配额" onClick={() => openQuota(item)} />
+            <ActionButton icon={Pencil} title="编辑" onClick={() => setEditing(item)} />
+            <ActionButton icon={Trash2} title="删除" destructive onClick={() => setDeleteTarget(item)} />
+          </RowActionButtons>
+        ),
+      },
+    ],
+    [],
+  )
 
   return (
     <>
       <PagePanel
-        title="AWS 账号"
-        description="维护用于开通 EC2 / Lightsail 的访问密钥"
-        icon={Users}
-        actions={<Button onClick={() => setCreateOpen(true)}>添加账号</Button>}
+        title="AWS 账号管理"
+        icon={ChartColumn}
+        actions={
+          <>
+            <AccountImportExport
+              fields={[
+                { name: 'name', label: '名称' },
+                { name: 'email', label: '邮箱', required: true },
+                { name: 'key_id', label: 'Access Key', required: true },
+                { name: 'secret', label: 'Secret', required: true },
+                { name: 'note', label: '备注' },
+              ]}
+              accounts={items as unknown as Record<string, unknown>[]}
+              onImport={async (record) => {
+                await api.post('/aws/account', {
+                  name: record.name ?? '',
+                  email: record.email ?? '',
+                  key_id: record.key_id ?? '',
+                  secret: record.secret ?? '',
+                  note: record.note ?? '',
+                })
+              }}
+            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <span className="text-base leading-none">+</span>
+              添加
+            </Button>
+          </>
+        }
       >
         <div>
-          <div className="border-b border-slate-100 px-6 py-4">
-          <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / 邮箱 / Key" />
-        </div>
+          <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / 邮箱 / Key">
+              <BulkDeleteButton count={selection.selected.length} onDelete={() => setBulkDeleteOpen(true)} />
+            </Toolbar>
 
-        {loading ? (
-          <div className="space-y-2 px-6 py-4">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : error ? (
-          <EmptyState title="加载失败" description={error} action={<Button variant="outline" onClick={reload}>重试</Button>} />
-        ) : items.length === 0 ? (
-          <EmptyState title="还没有 AWS 账号" description="添加 Access Key 后才能创建实例" action={<Button onClick={() => setCreateOpen(true)}>添加账号</Button>} />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>账号</TableHead>
-                <TableHead>Access Key</TableHead>
-                <TableHead>Secret</TableHead>
-                <TableHead>配额</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="font-medium">{item.name || '—'}</div>
-                    <div className="text-xs text-muted-foreground">{item.email || '—'}</div>
-                    {item.note ? <div className="text-xs text-muted-foreground">备注: {item.note}</div> : null}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{maskSecret(item.key_id)}</TableCell>
-                  <TableCell className="font-mono text-xs">{maskSecret(item.secret)}</TableCell>
-                  <TableCell className="tabular-nums">{item.value}</TableCell>
-                  <TableCell>
-                    <Badge tone={item.status ? 'success' : 'muted'}>{item.status ? '可用' : '异常'}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" title="同步资源" onClick={() => syncAccount(item)}>
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="查看配额" onClick={() => openQuota(item)}>
-                        <Gauge className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="编辑" onClick={() => setEditing(item)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="删除" className="text-destructive" onClick={() => setDeleteTarget(item)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+          {loading ? (
+            <div className="space-y-2 px-6 py-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-10 w-full" />
               ))}
-            </TableBody>
-          </Table>
-        )}
+            </div>
+          ) : error ? (
+            <EmptyState title="加载失败" description={error} action={<Button variant="outline" onClick={reload}>重试</Button>} />
+          ) : items.length === 0 ? (
+            <EmptyState title="还没有 AWS 账号" description="添加 Access Key 后才能创建实例" action={<Button onClick={() => setCreateOpen(true)}>添加账号</Button>} />
+          ) : (
+            <DataTable
+              columns={columns}
+              items={items}
+              rowKey={(item) => item.id}
+              selectable
+              selection={selection}
+              selectionId={(item) => item.id}
+              expandable
+              expandedId={expandedId}
+              onToggleExpand={(item) => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+              renderExpanded={(item) => (
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div className="text-[11px] text-slate-400">Access Key ID</div>
+                    <div className="mt-0.5 truncate font-mono text-[13px] font-medium text-slate-700">{item.key_id || '—'}</div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div className="text-[11px] text-slate-400">Secret Access Key</div>
+                    <div className="mt-0.5 truncate font-mono text-[13px] font-medium text-slate-700">{item.secret ? '••••••••••••' : '—'}</div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div className="text-[11px] text-slate-400">邮箱</div>
+                    <div className="mt-0.5 truncate text-[13px] font-medium text-slate-700">{item.email || '—'}</div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div className="text-[11px] text-slate-400">备注</div>
+                    <div className="mt-0.5 truncate text-[13px] font-medium text-slate-700">{item.note || '—'}</div>
+                  </div>
+                </div>
+              )}
+            />
+          )}
 
-        <Pagination
-          page={page}
-          limit={limit}
-          total={data?.total ?? 0}
-          onPageChange={setPage}
-          onLimitChange={(value) => { setLimit(value); setPage(1) }}
-        />
+          <Pagination
+            page={page}
+            limit={limit}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+            onLimitChange={(value) => { setLimit(value); setPage(1) }}
+          />
         </div>
       </PagePanel>
 
@@ -188,7 +250,7 @@ export function AwsAccountsPage() {
                 <TableBody>
                   {quota.map((row) => (
                     <TableRow key={String(row[0])}>
-                      <TableCell>{row[1]}</TableCell>
+                      <TableCell className="text-left">{row[1]}</TableCell>
                       <TableCell className="text-right tabular-nums">{String(row[2])}</TableCell>
                     </TableRow>
                   ))}
@@ -214,6 +276,26 @@ export function AwsAccountsPage() {
           } catch (err) {
             toast.error(err instanceof Error ? err.message : '删除失败')
           }
+        }}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title="批量删除账号"
+        description={`将删除选中的 ${selection.selected.length} 个账号, 该操作不可恢复。`}
+        confirmText="确认删除"
+        onConfirm={async () => {
+          for (const id of selection.selected) {
+            try {
+              await api.post('/aws/account/delete', { account_id: id })
+            } catch {
+              // 单条失败不中断整批删除
+            }
+          }
+          selection.clear()
+          toast.success('批量删除完成')
+          reload()
         }}
       />
     </>

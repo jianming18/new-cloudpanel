@@ -175,8 +175,10 @@ pnpm build                     # 构建, 产物输出到 ../web
 前端约定：
 
 - `src/components/ui/`：基础组件（Button、Dialog、Table 等，shadcn/ui 风格）
-- `src/components/`：业务组件（分页、确认弹窗、登录信息弹窗等）
-- `src/pages/`：按云平台拆分的页面
+- `src/components/`：业务组件（分页、确认弹窗、登录信息弹窗、通用数据表格等）
+- `src/pages/`：按云平台拆分的页面，每个云平台分为「账号列表」与「实例管理」两个独立页面
+  - `aws/`：账号列表、EC2 实例管理、Lightsail 实例管理
+  - `azure/`、`do/`、`linode/`：账号列表、实例管理
 - `src/lib/api.ts`：统一请求封装，自动携带 `X-Token` 并处理业务错误码
 
 ## CI/CD 与依赖构建优化

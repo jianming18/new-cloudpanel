@@ -1,17 +1,12 @@
 import { useState } from 'react'
 import {
-  Boxes,
   ChevronsUpDown,
-  Cloud,
-  Droplets,
   FileCode2,
+  Gem,
   KeyRound,
-  Layers,
-  LayoutDashboard,
+  LayoutGrid,
   LogOut,
-  Server,
   Settings,
-  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { Link, useLocation } from 'wouter'
@@ -34,34 +29,46 @@ interface NavItem {
 }
 
 interface NavGroup {
+  /** 分组标题, 展示为大写的小号灰字 */
   title: string
   items: NavItem[]
 }
 
+/** 账号/实例两类页面在各厂商下通用, 因此图标统一用网格样式 */
+const GRID_ICON = LayoutGrid
+
 export const NAV_GROUPS: NavGroup[] = [
   {
-    title: '概览',
-    items: [{ href: '/', label: '仪表盘', icon: LayoutDashboard }],
+    title: 'Azure 管理',
+    items: [
+      { href: '/azure/accounts', label: '账号列表', icon: GRID_ICON },
+      { href: '/azure/instances', label: '实例管理', icon: GRID_ICON },
+    ],
   },
   {
     title: 'AWS 管理',
     items: [
-      { href: '/aws/accounts', label: '账号列表', icon: Users },
-      { href: '/aws/ec2', label: '实例管理', icon: Boxes },
-      { href: '/aws/lightsail', label: 'Lightsail 管理', icon: Server },
+      { href: '/aws/accounts', label: '账号列表', icon: GRID_ICON },
+      { href: '/aws/instances', label: '实例管理', icon: GRID_ICON },
     ],
   },
   {
-    title: 'Azure 管理',
-    items: [{ href: '/azure', label: '账号与实例', icon: Layers }],
+    title: 'Lightsail 管理',
+    items: [{ href: '/aws/lightsail', label: '实例管理', icon: GRID_ICON }],
   },
   {
     title: 'DigitalOcean 管理',
-    items: [{ href: '/do', label: '账号与实例', icon: Droplets }],
+    items: [
+      { href: '/do/accounts', label: '账号列表', icon: GRID_ICON },
+      { href: '/do/instances', label: '实例管理', icon: GRID_ICON },
+    ],
   },
   {
     title: 'Linode 管理',
-    items: [{ href: '/linode', label: '账号与实例', icon: Cloud }],
+    items: [
+      { href: '/linode/accounts', label: '账号列表', icon: GRID_ICON },
+      { href: '/linode/instances', label: '实例管理', icon: GRID_ICON },
+    ],
   },
   {
     title: '系统',
@@ -88,16 +95,23 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <aside className="flex h-full w-[248px] shrink-0 flex-col bg-[#1e1f2e] text-slate-300">
-      <div className="flex h-16 items-center gap-2.5 px-6">
-        <img src="/logo.png" alt="CloudPanel" className="h-7 w-7 rounded-md" />
-        <span className="text-[15px] font-semibold text-white">CloudPanel</span>
-      </div>
+    <aside className="flex h-full w-[248px] shrink-0 flex-col bg-[#1e2033] text-slate-300">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-thin">
+        <Link href="/" onClick={onNavigate}>
+          <span
+            className={cn(
+              'mb-5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-[13.5px] transition-colors',
+              location === '/' ? 'bg-white/[0.08] text-white' : 'text-white/60 hover:bg-white/[0.05] hover:text-white/90',
+            )}
+          >
+            <Gem className="h-[17px] w-[17px] shrink-0 text-primary" strokeWidth={1.9} />
+            <span className="truncate">Dashboard</span>
+          </span>
+        </Link>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-6 pt-1 scrollbar-thin">
         {NAV_GROUPS.map((group) => (
-          <div key={group.title} className="mt-5 first:mt-2">
-            <div className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-white/30">
+          <div key={group.title} className="mt-5 first:mt-0">
+            <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {group.title}
             </div>
             <div className="space-y-0.5">
@@ -109,14 +123,17 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                       className={cn(
                         'relative flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] transition-colors',
                         active
-                          ? 'bg-white/[0.08] font-medium text-white'
-                          : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90',
+                          ? 'bg-white/[0.06] font-medium text-primary'
+                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100',
                       )}
                     >
                       {active ? (
                         <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-primary" />
                       ) : null}
-                      <item.icon className={cn('h-[17px] w-[17px] shrink-0', active ? 'text-primary' : 'text-white/40')} strokeWidth={1.8} />
+                      <item.icon
+                        className={cn('h-[17px] w-[17px] shrink-0', active ? 'text-primary' : 'text-slate-500')}
+                        strokeWidth={1.8}
+                      />
                       <span className="truncate">{item.label}</span>
                     </span>
                   </Link>

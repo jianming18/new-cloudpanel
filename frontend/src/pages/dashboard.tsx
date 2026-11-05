@@ -59,7 +59,7 @@ export function DashboardPage() {
       value: (data?.lightsail ?? 0) + (data?.ec2 ?? 0),
       hint: `Lightsail ${data?.lightsail ?? 0} · EC2 ${data?.ec2 ?? 0}`,
       icon: Cloud,
-      href: '/aws/ec2',
+      href: '/aws/instances',
       tone: 'bg-amber-50 text-amber-600',
     },
     {
@@ -67,7 +67,7 @@ export function DashboardPage() {
       value: data?.azureVm ?? 0,
       hint: `${data?.azureAccounts ?? 0} 个订阅`,
       icon: Layers,
-      href: '/azure',
+      href: '/azure/instances',
       tone: 'bg-sky-50 text-sky-600',
     },
     {
@@ -75,7 +75,7 @@ export function DashboardPage() {
       value: data?.droplets ?? 0,
       hint: `${data?.doAccounts ?? 0} 个账号`,
       icon: Droplets,
-      href: '/do',
+      href: '/do/instances',
       tone: 'bg-blue-50 text-blue-600',
     },
     {
@@ -83,13 +83,13 @@ export function DashboardPage() {
       value: data?.linodeVm ?? 0,
       hint: `${data?.linodeAccounts ?? 0} 个账号`,
       icon: Server,
-      href: '/linode',
+      href: '/linode/instances',
       tone: 'bg-emerald-50 text-emerald-600',
     },
   ]
 
   return (
-    <PagePanel title="仪表盘" description="各云平台资源与账号概览" icon={LayoutDashboard} bodyClassName="space-y-4 p-6">
+    <PagePanel title="Dashboard" description="各云平台资源与账号概览" icon={LayoutDashboard} bodyClassName="space-y-4 p-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <Link key={card.title} href={card.href}>
@@ -124,9 +124,9 @@ export function DashboardPage() {
             <div className="divide-y">
               {[
                 { label: 'AWS', value: data?.awsAccounts ?? 0, href: '/aws/accounts' },
-                { label: 'Azure', value: data?.azureAccounts ?? 0, href: '/azure' },
-                { label: 'DigitalOcean', value: data?.doAccounts ?? 0, href: '/do' },
-                { label: 'Linode', value: data?.linodeAccounts ?? 0, href: '/linode' },
+                { label: 'Azure', value: data?.azureAccounts ?? 0, href: '/azure/accounts' },
+                { label: 'DigitalOcean', value: data?.doAccounts ?? 0, href: '/do/accounts' },
+                { label: 'Linode', value: data?.linodeAccounts ?? 0, href: '/linode/accounts' },
               ].map((row) => (
                 <Link key={row.label} href={row.href}>
                   <div className="flex cursor-pointer items-center justify-between py-2.5 text-sm hover:text-primary">
@@ -145,9 +145,9 @@ export function DashboardPage() {
             <div className="grid grid-cols-2 gap-2 text-sm">
               {[
                 { label: '新增 Lightsail', href: '/aws/lightsail' },
-                { label: '新增 EC2', href: '/aws/ec2' },
-                { label: '绑定 Azure 订阅', href: '/azure' },
-                { label: '绑定 Linode', href: '/linode' },
+                { label: '新增 EC2', href: '/aws/instances' },
+                { label: '绑定 Azure 订阅', href: '/azure/accounts' },
+                { label: '绑定 Linode', href: '/linode/accounts' },
                 { label: '启动脚本', href: '/scripts' },
                 { label: '系统设置', href: '/settings' },
               ].map((item) => (

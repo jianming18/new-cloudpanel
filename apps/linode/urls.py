@@ -7,6 +7,7 @@ urlpatterns = [
     # aws 账号
     path('account', is_token(views.LinodeAccountView.as_view()), name="LinodeAccountView"),
     path('account/delete', is_token(views.LinodeAccountDeleteView.as_view()), name="LinodeAccountDeleteView"),
+    path('account/update', is_token(views.LinodeAccountUpdateView.as_view()), name="LinodeAccountUpdateView"),
     path('vm', is_token(views.LinodeVmListView.as_view()), name="LinodeVmListView"),
     path('vm/action', is_token(views.LinodeVmActionView.as_view()), name="LinodeVmActionView"),
     path('vm/create', is_token(views.LinodeVmCreateView.as_view()), name="LinodeVmCreateView"),

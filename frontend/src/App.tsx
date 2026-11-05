@@ -6,10 +6,13 @@ import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { AwsAccountsPage } from '@/pages/aws/accounts'
 import { Ec2Page } from '@/pages/aws/ec2'
 import { LightsailPage } from '@/pages/aws/lightsail'
-import { AzurePage } from '@/pages/azure'
+import { AzureAccountsPage } from '@/pages/azure/accounts'
+import { AzureInstancesPage } from '@/pages/azure/instances'
 import { DashboardPage } from '@/pages/dashboard'
-import { DigitalOceanPage } from '@/pages/do'
-import { LinodePage } from '@/pages/linode'
+import { DoAccountsPage } from '@/pages/do/accounts'
+import { DoInstancesPage } from '@/pages/do/instances'
+import { LinodeAccountsPage } from '@/pages/linode/accounts'
+import { LinodeInstancesPage } from '@/pages/linode/instances'
 import { LoginPage } from '@/pages/login'
 import { NotFoundPage } from '@/pages/not-found'
 import { ScriptsPage } from '@/pages/scripts'
@@ -29,11 +32,14 @@ function AuthenticatedShell() {
       <Switch>
         <Route path="/" component={DashboardPage} />
         <Route path="/aws/lightsail" component={LightsailPage} />
-        <Route path="/aws/ec2" component={Ec2Page} />
+        <Route path="/aws/instances" component={Ec2Page} />
         <Route path="/aws/accounts" component={AwsAccountsPage} />
-        <Route path="/azure" component={AzurePage} />
-        <Route path="/do" component={DigitalOceanPage} />
-        <Route path="/linode" component={LinodePage} />
+        <Route path="/azure/accounts" component={AzureAccountsPage} />
+        <Route path="/azure/instances" component={AzureInstancesPage} />
+        <Route path="/do/accounts" component={DoAccountsPage} />
+        <Route path="/do/instances" component={DoInstancesPage} />
+        <Route path="/linode/accounts" component={LinodeAccountsPage} />
+        <Route path="/linode/instances" component={LinodeInstancesPage} />
         <Route path="/scripts" component={ScriptsPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFoundPage} />

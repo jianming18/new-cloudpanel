@@ -7,7 +7,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f5fa]">
+    <div className="flex h-screen overflow-hidden bg-[#eef0f7]">
       <div className="hidden h-full lg:block">
         <Sidebar />
       </div>
@@ -23,7 +23,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenSidebar={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-7">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <div className="mx-auto w-full max-w-[1560px] space-y-5">{children}</div>
         </main>
       </div>

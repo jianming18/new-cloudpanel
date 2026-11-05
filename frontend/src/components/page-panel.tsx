@@ -7,6 +7,7 @@ interface PagePanelProps {
   title: string
   description?: string
   icon?: LucideIcon
+  /** 标题右侧的操作区 */
   actions?: ReactNode
   children: ReactNode
   /** 内容区留白, 表格类页面传 p-0 由表格自身控制间距 */

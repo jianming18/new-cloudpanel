@@ -3,14 +3,15 @@ import { FileCode2, Plus, SquarePen } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/empty-state'
+import { DataTable } from '@/components/data-table'
 import { PagePanel } from '@/components/page-panel'
 import { Pagination } from '@/components/pagination'
+import { ActionButton, RowActionButtons } from '@/components/row-actions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useRequest } from '@/hooks/use-request'
 import { api } from '@/lib/api'
@@ -53,35 +54,41 @@ export function ScriptsPage() {
             action={<Button onClick={() => setCreateOpen(true)}>新建脚本</Button>}
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>内容预览</TableHead>
-                <TableHead>更新时间</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="max-w-[520px] truncate font-mono text-xs text-muted-foreground">
+          <DataTable
+            columns={[
+              {
+                key: 'name',
+                label: '名称',
+                render: (item) => <span className="font-medium">{item.name}</span>,
+              },
+              {
+                key: 'content',
+                label: '内容预览',
+                render: (item) => (
+                  <span className="block max-w-[520px] truncate font-mono text-xs text-muted-foreground">
                     {item.content.replace(/\s+/g, ' ').slice(0, 120) || '—'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(item.update_time)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(item)}>
-                        <SquarePen className="h-4 w-4" />
-                        编辑
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </span>
+                ),
+                cellClassName: 'text-left',
+              },
+              {
+                key: 'update_time',
+                label: '更新时间',
+                render: (item) => <span className="text-muted-foreground">{formatDate(item.update_time)}</span>,
+              },
+              {
+                key: 'actions',
+                label: '操作',
+                render: (item) => (
+                  <RowActionButtons>
+                    <ActionButton icon={SquarePen} title="编辑" onClick={() => setEditing(item)} />
+                  </RowActionButtons>
+                ),
+              },
+            ]}
+            items={items}
+            rowKey={(item) => item.id}
+          />
         )}
 
         <Pagination page={page} limit={limit} total={data?.total ?? 0} onPageChange={setPage} onLimitChange={(value) => { setLimit(value); setPage(1) }} />

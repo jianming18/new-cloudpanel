@@ -9,6 +9,8 @@ export interface AccountOption {
   name: string
   /** 账号备注, 存在时以下拉项内括号展示 */
   note?: string
+  /** 下拉项右侧的补充信息, 例如余额 */
+  meta?: string
 }
 
 /** 'all' 表示不按账号过滤 */
@@ -44,17 +46,22 @@ interface AccountFilterProps {
 export function AccountFilter({ value, onChange, accounts, className }: AccountFilterProps) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn('h-10 w-full sm:w-[220px]', className)}>
-        <span className="flex items-center gap-2 truncate">
+      <SelectTrigger className={cn('h-10 w-full sm:w-[300px]', className)}>
+        <span className="flex min-w-0 items-center gap-2">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <SelectValue placeholder="全部账号" />
+          <SelectValue placeholder="全部账号" className="truncate" />
         </span>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL_ACCOUNTS}>全部账号</SelectItem>
         {accounts.map((account) => (
           <SelectItem key={account.id} value={String(account.id)} title={account.note || undefined}>
-            {account.note ? `${account.name}（${account.note}）` : account.name}
+            <span className="flex min-w-0 items-center justify-between gap-3">
+              <span className="truncate">
+                {account.note ? `${account.name}（${account.note}）` : account.name}
+              </span>
+              {account.meta ? <span className="shrink-0 text-xs text-slate-400">{account.meta}</span> : null}
+            </span>
           </SelectItem>
         ))}
       </SelectContent>

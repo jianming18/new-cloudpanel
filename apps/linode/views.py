@@ -152,6 +152,23 @@ class LinodeAccountDeleteView(View):
             'message': '删除失败'
         })
 
+# 刷新 Linode 账号信息 (余额 / 邮箱 / 优惠)
+class LinodeAccountUpdateView(View):
+    def get(self, request):
+        account_id = request.GET.get('account_id')
+        account_info = models.Account.objects.filter(id=account_id).first()
+
+        if not account_info:
+            return JsonResponse({
+                'code': 20001,
+                'message': '账号不存在, 无法操作'
+            })
+
+        message, status = account_info.get_account()
+        if not status:
+            return JsonResponse({'code': 20001, 'message': message})
+        return JsonResponse({'code': 20000, 'message': message})
+
 # Azure Vm 实例列表
 class LinodeVmListView(View):
     def get(self, request):
