@@ -10,6 +10,7 @@ from libs.utils import DateTimeToStr, dispatch_task, should_auto_sync
 from libs.linode import LinodeApi, LinodeCatalog
 
 import json
+import re
 
 class LinodeAccountView(View):
     def get(self, request):
@@ -67,7 +68,13 @@ class LinodeAccountView(View):
 
     def post(self, request):
         account_id = request.POST.get('account_id', '')
-        token = request.POST.get('token', '').strip()
+        # 去掉空白字符; 兼容从表格整段复制(Token 前后粘了名字)的情况
+        raw_token = request.POST.get('token', '')
+        token = ''.join(raw_token.split())
+        if not re.fullmatch(r'[0-9a-fA-F]{64}', token):
+            matched = re.findall(r'[0-9a-fA-F]{64}', raw_token)
+            if len(matched) == 1:
+                token = matched[0]
         name = request.POST.get('name', '').strip()
         note = request.POST.get('note', '').strip()
 
@@ -81,21 +88,40 @@ class LinodeAccountView(View):
             account_info.save()
             return JsonResponse({'code': 20000, 'message': '账号已保存'})
 
+        # Linode Token 固定为 64 位十六进制, 提前拦下整段复制/粘贴不全的情况
+        if not re.fullmatch(r'[0-9a-fA-F]{64}', token):
+            return JsonResponse({
+                'code': 20001,
+                'message': f'Token 格式不正确: 应为 64 位十六进制字符(当前 {len(token)} 位), 请只粘贴 Token 本身'
+            })
+
         if models.Account.objects.filter(token=token).first():
             return JsonResponse({'code': 20001, 'message': f'该 Token 已存在, 无法重复添加'})
 
         linodeApi = LinodeApi(token)
         if not linodeApi.get_account():
-            return JsonResponse({'code': 20001, 'message': f'无效 token, 无法添加'})
+            # 把官方返回的错误原因(如 Invalid Token / Unauthorized)转成可操作的提示
+            reason = ''
+            if isinstance(linodeApi.result, dict):
+                errors = linodeApi.result.get('errors') or []
+                if errors:
+                    reason = errors[0].get('reason', '')
+            hints = {
+                'Invalid Token': 'Token 无效: 请确认未过期、未被撤销, 并且只粘贴了 64 位 Token',
+                'Unauthorized': 'Token 权限不足: 需要 Linodes 读写和 Account 读取权限',
+            }
+            message = hints.get(reason) or (f'无法添加账号: {reason}' if reason else '无效 token, 无法添加')
+            return JsonResponse({'code': 20001, 'message': message})
         try:
+            result = linodeApi.result
             _data = {
                 'token': token,
                 'name': name,
                 'note': note,
-                'email': linodeApi.result['email'],
-                'balance': linodeApi.result['balance'],
-                'euuid': linodeApi.result['euuid'],
-                'active_promotions': json.dumps(linodeApi.result['active_promotions']),
+                'email': result.get('email', ''),
+                'balance': result.get('balance', ''),
+                'euuid': result.get('euuid', ''),
+                'active_promotions': json.dumps(result.get('active_promotions') or []),
                 'status': True,
             }
             if account_info := models.Account.objects.create(**_data):

@@ -42,8 +42,8 @@ class Account(models.Model):
 
             self.status = True
             self.email = linode.result.get('email', '')
-            self.balance = linode.result['balance']
-            active_promotions = linode.result['active_promotions']
+            self.balance = linode.result.get('balance', '')
+            active_promotions = linode.result.get('active_promotions') or []
             self.active_promotions = json.dumps(active_promotions)
             self.save()
             return '更新完成', True

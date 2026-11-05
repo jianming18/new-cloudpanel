@@ -309,6 +309,14 @@ function LinodeAccountTab() {
   )
 }
 
+/** Linode Token 固定为 64 位十六进制; 整段复制时自动提取其中的 Token */
+function extractLinodeToken(raw: string): string {
+  const compact = raw.replace(/\s+/g, '')
+  if (/^[0-9a-fA-F]{64}$/.test(compact)) return compact
+  const matched = raw.match(/[0-9a-fA-F]{64}/g) ?? []
+  return matched.length === 1 ? matched[0] : compact
+}
+
 function AddLinodeAccountDialog({ open, onOpenChange, onSaved }: { open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
   const [token, setToken] = useState('')
   const [name, setName] = useState('')
@@ -317,9 +325,14 @@ function AddLinodeAccountDialog({ open, onOpenChange, onSaved }: { open: boolean
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    const cleanToken = extractLinodeToken(token)
+    if (!/^[0-9a-fA-F]{64}$/.test(cleanToken)) {
+      toast.error(`Token 格式不正确: 应为 64 位十六进制字符(当前 ${cleanToken.length} 位)`)
+      return
+    }
     setPending(true)
     try {
-      await api.post('/linode/account', { token, name, note })
+      await api.post('/linode/account', { token: cleanToken, name, note })
       toast.success('账号已添加, 正在同步实例')
       onOpenChange(false)
       setToken('')
@@ -338,7 +351,7 @@ function AddLinodeAccountDialog({ open, onOpenChange, onSaved }: { open: boolean
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>添加 Linode 账号</DialogTitle>
-          <DialogDescription>令牌需要 Linodes 读写权限。</DialogDescription>
+          <DialogDescription>令牌需要 Linodes 读写和 Account 读取权限。</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">

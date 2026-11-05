@@ -6,6 +6,7 @@ class LinodeApi():
     def __init__(self, token):
         self.curl = requests.session()
         self.access_token = token
+        self.result = {}
         self.curl.headers = {
             'content-type': 'application/json',
             'Authorization': f'Bearer {self.access_token}'
@@ -102,8 +103,11 @@ class LinodeApi():
     def get_account(self):
         try:
             url = 'https://api.linode.com/v4/account'
-            return self.report_get(url)
-        except:
+            if not self.report_get(url):
+                return False
+            # 正常返回必须包含 email, 否则说明拿到的不是账号信息
+            return isinstance(self.result, dict) and 'email' in self.result
+        except Exception:
             return False
 
     def get_regions(self):
@@ -142,13 +146,18 @@ class LinodeApi():
     # 统一发送请求
     def report_get(self, url):
         try:
-            ret = self.curl.get(url)
+            ret = self.curl.get(url, timeout=30)
             print(ret.text)
-            self.result =ret.json()
-            # print(self.result)
-            self.ret =ret.json()
+            self.result = ret.json()
+            self.ret = self.result
+            # 错误响应(如 401 Invalid Token)同样返回 json, 不能当成成功
+            if ret.status_code >= 400:
+                return False
+            if isinstance(self.result, dict) and self.result.get('errors'):
+                return False
             return True
-        except:
+        except Exception:
+            self.result = {}
             return False
 
     # 统一发送请求
