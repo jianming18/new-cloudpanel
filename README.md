@@ -241,6 +241,7 @@ pnpm build                     # 构建, 产物输出到 ../web
 |---|---|---|
 | `IMAGE_BASE` | 镜像仓库前缀；切换 CNB 制品库时设为 `docker.cnb.cool/mrzhang193/new-cloudpanel` | `ghcr.io/jianming18/new-cloudpanel` |
 | `IMAGE_TAG` | 镜像版本，`latest` 为最新版，可指定版本号 | `latest` |
+| `REDIS_IMAGE` | redis 镜像地址；Docker Hub 拉不动时指向可用镜像站 | `redis:latest` |
 | `DEBUG` | 调试模式，生产必须为 `0` | `0` |
 | `DJANGO_SECRET_KEY` | 安全密钥，**生产必填随机值** | 空 |
 | `FRONTENDPORT` | 面板对外端口 | `8086` |
@@ -255,6 +256,7 @@ pnpm build                     # 构建, 产物输出到 ../web
 - 数据库与日志通过 `data/`、`logs/` 目录挂载，升级镜像不丢数据
 - 升级后容器启动时自动执行数据库迁移与管理员初始化
 - 前后端镜像均为 `linux/amd64` 单架构，`docker-compose.yml` 中 api 固定 `platform: linux/amd64`（离线 wheelhouse 仅含 x86_64 wheel）；ARM 机器需自行启用模拟或从源码构建
+- 升级脚本把 api/web 与 redis 分开拉取：redis 走 Docker Hub，失败时自动换镜像站（daocloud / 阿里云）并重打标签，仍失败则沿用本地已有镜像；也可在 `.env` 中直接设置 `REDIS_IMAGE` 指定可用的 redis 镜像
 
 ## 注意事项
 

@@ -66,6 +66,70 @@ fetch_file() {
     fi
 }
 
+# 读取 .env 中的值（不 source 整个文件，避免特殊字符被 shell 解析）
+get_env_value() {
+    local key="$1" file="${2:-.env}" value
+    [ -f "$file" ] || return 0
+    value=$(sed -n "s/^$key=//p" "$file" | tail -1)
+    value=${value%\"}; value=${value#\"}
+    value=${value%\'}; value=${value#\'}
+    echo "$value"
+}
+
+# 镜像层按 digest 落盘缓存，单次中断后重试即可续传
+pull_image_retry() {
+    local image="$1" attempt
+    for attempt in 1 2 3; do
+        if docker pull "$image"; then
+            return 0
+        fi
+        log_warn "拉取 ${image} 失败（第 ${attempt}/3 次），已下载的层会保留，稍后重试..."
+        if [ "$attempt" -lt 3 ]; then
+            sleep 5
+        fi
+    done
+    return 1
+}
+
+# redis 来自 Docker Hub，国内链路最容易被打断：单独拉取，失败时换镜像站再重打标签，
+# 不跟着 api/web 一起失败
+REDIS_MIRRORS=(
+    "docker.m.daocloud.io/library/redis"
+    "registry.cn-hangzhou.aliyuncs.com/library/redis"
+)
+
+pull_redis() {
+    local target tag mirror
+    target="${REDIS_IMAGE:-$(get_env_value REDIS_IMAGE)}"
+    target=${target:-redis:latest}
+    tag=${target##*:}
+    [ "$tag" = "$target" ] && tag="latest"
+
+    pull_image_retry "$target" && return 0
+
+    for mirror in "${REDIS_MIRRORS[@]}"; do
+        log_warn "改用镜像站拉取 redis: ${mirror}:${tag}"
+        if pull_image_retry "${mirror}:${tag}" && docker tag "${mirror}:${tag}" "$target"; then
+            log_info "已用镜像站拉取，并标记为 ${target}"
+            return 0
+        fi
+    done
+
+    if docker image inspect "$target" > /dev/null 2>&1; then
+        log_warn "redis 拉取失败，继续使用本地已有镜像 ${target}"
+        return 0
+    fi
+    return 1
+}
+
+# 升级失败时回滚配置，避免留下「新 compose + 旧镜像」的半升级状态
+rollback_config() {
+    local backup_dir="$1"
+    cp "${backup_dir}/.env" .env 2>/dev/null || true
+    cp "${backup_dir}/docker-compose.yml" docker-compose.yml 2>/dev/null || true
+    cp "${backup_dir}/nginx.conf" config/nginx.conf 2>/dev/null || true
+}
+
 # 检查 root 权限
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -262,9 +326,10 @@ do_update() {
     # 镜像仓库长连接偶发被重置；已下载的层按 digest 缓存，重试可续传，
     # 不要让一次抖动中止整个升级。
     log_info "正在拉取最新镜像..."
+    # api / web 与 redis 分开拉：redis 来自 Docker Hub，不能让它拖垮整次升级
     local pull_ok=0 attempt
     for attempt in 1 2 3; do
-        if docker compose pull; then
+        if docker compose pull api web; then
             pull_ok=1
             break
         fi
@@ -275,10 +340,7 @@ do_update() {
     done
 
     if [ "$pull_ok" -ne 1 ]; then
-        # 回滚配置，避免留下「新 compose + 旧镜像」的半升级状态
-        cp "$backup_dir/.env" .env 2>/dev/null || true
-        cp "$backup_dir/docker-compose.yml" docker-compose.yml 2>/dev/null || true
-        cp "$backup_dir/nginx.conf" config/nginx.conf 2>/dev/null || true
+        rollback_config "$backup_dir"
         log_error "镜像拉取失败，升级已中止；正在运行的旧版本服务未受影响。"
         if [ "$SOURCE" = "cnb" ]; then
             log_error "原因：访问 CNB (docker.cnb.cool / cnb.cool) 的连接被重置。"
@@ -286,6 +348,15 @@ do_update() {
             log_error "原因：访问 GitHub CDN (ghcr.io / raw.githubusercontent.com) 的连接被重置。"
         fi
         log_error "处理：可改用另一安装源（--cnb）、为 Docker 配置代理或镜像加速后重新执行 update，或稍后重试（层会续传）。"
+        log_error "配置备份位于：${backup_dir}"
+        exit 1
+    fi
+
+    if ! pull_redis; then
+        rollback_config "$backup_dir"
+        log_error "redis 镜像拉取失败，升级已中止；正在运行的旧版本服务未受影响。"
+        log_error "处理：在 /opt/cloudpanel/.env 中设置 REDIS_IMAGE 指向可用镜像源后重新执行 update。"
+        log_error "例如：REDIS_IMAGE=registry.cn-hangzhou.aliyuncs.com/library/redis:latest"
         log_error "配置备份位于：${backup_dir}"
         exit 1
     fi
@@ -360,6 +431,9 @@ DJANGO_SETTINGS_MODULE=panelProject.settings
 REDIS_HOST=redis
 REDIS_PORT=6379
 
+# Redis 镜像 (默认 redis:latest; Docker Hub 拉不动时可指向镜像站)
+# REDIS_IMAGE=registry.cn-hangzhou.aliyuncs.com/library/redis:latest
+
 # SQLite 数据库路径
 SQLITE_PATH=/home/python/panel/data/db.sqlite3
 
@@ -389,7 +463,17 @@ EOF
     cd "$INSTALL_DIR"
     prepare_sqlite_storage
     
-    log_step "开始拉取镜像并启动服务..."
+    log_step "开始拉取镜像..."
+    if ! $COMPOSE_CMD pull api web; then
+        log_error "拉取 CloudPanel 镜像失败，请检查与镜像仓库的网络连通性后重试"
+        exit 1
+    fi
+    if ! pull_redis; then
+        log_error "拉取 redis 镜像失败，请检查与 Docker Hub / 镜像站的连通性后重试"
+        exit 1
+    fi
+
+    log_step "启动服务..."
     $COMPOSE_CMD up -d
 
     # 关键步骤：等待数据库就绪
