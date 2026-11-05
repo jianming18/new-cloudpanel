@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Play, Power, RefreshCw, RotateCcw, Trash2, Zap } from 'lucide-react'
+import { Play, Power, RefreshCw, RotateCcw, Server, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AccountFilter, ALL_ACCOUNTS, useAccountFilter } from '@/components/account-filter'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CredentialsDialog } from '@/components/credentials-dialog'
 import { EmptyState } from '@/components/empty-state'
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { MoreActions } from '@/components/row-actions'
 import { Pagination } from '@/components/pagination'
 import { Toolbar } from '@/components/toolbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -80,9 +79,10 @@ export function LightsailPage() {
 
   return (
     <>
-      <PageHeader
+      <PagePanel
         title="Lightsail 实例"
         description="管理 AWS Lightsail 轻量服务器"
+        icon={Server}
         actions={
           <>
             <Button variant="outline" size="icon" title="刷新列表" onClick={reload}>
@@ -91,10 +91,9 @@ export function LightsailPage() {
             <Button onClick={() => setCreateOpen(true)}>创建实例</Button>
           </>
         }
-      />
-
-      <Card>
-        <div className="p-4">
+      >
+        <div>
+          <div className="border-b border-slate-100 px-6 py-4">
           <Toolbar value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder="搜索名称 / IP / 地区">
             <AccountFilter
               value={accountId}
@@ -105,7 +104,7 @@ export function LightsailPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-10 w-full" />
             ))}
@@ -171,7 +170,8 @@ export function LightsailPage() {
           onPageChange={setPage}
           onLimitChange={(value) => { setLimit(value); setPage(1) }}
         />
-      </Card>
+        </div>
+      </PagePanel>
 
       <CreateLightsailDialog
         open={createOpen}

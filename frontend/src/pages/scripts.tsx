@@ -3,10 +3,9 @@ import { FileCode2, Plus, SquarePen } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/empty-state'
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { Pagination } from '@/components/pagination'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,15 +32,15 @@ export function ScriptsPage() {
 
   return (
     <>
-      <PageHeader
+      <PagePanel
         title="启动脚本"
         description="创建实例时可选择脚本, 内容会在首次开机时以 root 执行"
+        icon={FileCode2}
         actions={<Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" />新建脚本</Button>}
-      />
-
-      <Card>
+      >
+        <div>
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 px-6 py-4">
             {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
           </div>
         ) : error ? (
@@ -86,7 +85,8 @@ export function ScriptsPage() {
         )}
 
         <Pagination page={page} limit={limit} total={data?.total ?? 0} onPageChange={setPage} onLimitChange={(value) => { setLimit(value); setPage(1) }} />
-      </Card>
+        </div>
+      </PagePanel>
 
       <ScriptDialog
         open={createOpen || Boolean(editing)}

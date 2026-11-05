@@ -1,6 +1,6 @@
 import { ExternalLink, Info, Settings2 } from 'lucide-react'
 
-import { PageHeader } from '@/components/page-header'
+import { PagePanel } from '@/components/page-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,9 +22,7 @@ export function SettingsPage() {
   const version = document.querySelector('meta[name="version"]')?.getAttribute('content') || ''
 
   return (
-    <>
-      <PageHeader title="设置" description="站点配置与账号信息" />
-
+    <PagePanel title="设置" description="站点配置与账号信息" icon={Settings2} bodyClassName="space-y-4 p-6">
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -106,6 +104,6 @@ export function SettingsPage() {
           </Card>
         </div>
       </div>
-    </>
+    </PagePanel>
   )
 }

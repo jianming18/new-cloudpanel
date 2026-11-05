@@ -44,7 +44,7 @@ interface AccountFilterProps {
 export function AccountFilter({ value, onChange, accounts, className }: AccountFilterProps) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn('h-9 w-full sm:w-[200px]', className)}>
+      <SelectTrigger className={cn('h-10 w-full sm:w-[220px]', className)}>
         <span className="flex items-center gap-2 truncate">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
           <SelectValue placeholder="全部账号" />
