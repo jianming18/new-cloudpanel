@@ -39,19 +39,7 @@ jobs:
             echo "VERSION=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set platforms
-        id: platform
-        run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "PLATFORMS=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
-          else
-            echo "PLATFORMS=linux/amd64" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Set up QEMU
-        if: github.ref_type == 'tag'
-        uses: docker/setup-qemu-action@v3
-
+      # 离线 wheelhouse 只含 x86_64 wheel，前后端镜像统一构建 linux/amd64
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -81,14 +69,14 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: ${{ steps.platform.outputs.PLATFORMS }}
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           build-args: |
             VERSION=${{ steps.version.outputs.VERSION }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
           provenance: false
 
   build-web:
@@ -136,11 +124,12 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.frontend
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           build-args: |
             VERSION=${{ steps.version.outputs.VERSION }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
           provenance: false

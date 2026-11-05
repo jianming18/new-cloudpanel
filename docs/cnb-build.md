@@ -62,7 +62,7 @@ docker pull docker.cnb.cool/mrzhang193/new-cloudpanel/web:latest
 - **共用一份 stages**：用 YAML 锚点 `&build-pipeline` / 别名 `*build-pipeline` 复用配置，
   PR 流水线通过覆盖 `env.PUSH` 关掉推送，避免三份重复配置。
 - **Tag 事件写在 `$` 下**：`tag_push` 与分支无关，按 CNB 约定挂在兜底分支 `$`，匹配所有 Tag。
-- **架构**：默认使用构建节点架构（`linux/amd64`），未启用 QEMU 多架构构建。
+- **架构**：统一构建 `linux/amd64`（离线 wheelhouse 仅含 x86_64 wheel，未启用 QEMU 多架构），与 GitHub Actions 保持一致。
 - **离线依赖**：后端镜像直接使用仓库内提交的 `wheels/` 目录做离线安装，
   构建过程不依赖 PyPI；前端由 `Dockerfile.frontend` 内的 `pnpm fetch` 拉取依赖。
 
@@ -123,10 +123,10 @@ GitHub Actions 的 `build-api` 任务会在每次构建时自动重新生成 whe
 | 制品库 | `docker.cnb.cool/...`（CNB Docker 制品库） | `ghcr.io/...` |
 | 认证 | 内置 `CNB_TOKEN` 免密 | `GITHUB_TOKEN` + `docker/login-action` |
 | 后端依赖 | 直接用仓库内提交的 `wheels/` | CI 中 `pip download` 重新生成 |
-| 多架构 | 单架构（默认 amd64） | Tag 构建用 QEMU + buildx 产出 amd64/arm64 |
+| 架构 | 单架构（`linux/amd64`） | 单架构（`linux/amd64`） |
 | PR 行为 | 仅构建校验，不推送 | 仅构建（`push: false`），不推送 |
 
-两套流水线各自独立运行，可只保留其中一套，也可同时保留做双 registry 发布。
+两套流水线同时维护，各自发布到对应制品库；仓库代码需同时推送到 CNB 与 GitHub，避免两边不一致。
 
 ## 常见问题
 

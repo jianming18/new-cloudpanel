@@ -30,7 +30,7 @@ CloudPanel 是一个开源的多云服务管理平台，通过统一的界面管
 ### 工程化
 - 前后端分离：Django 4.2 RESTful API + React 18 (TypeScript + Vite + pnpm)
 - 容器化部署：Docker Compose 一键拉起（nginx 前端 + Django/Gunicorn 后端 + Redis + Celery）
-- CI/CD：推送自动构建多架构镜像并发布到 ghcr.io
+- CI/CD：推送自动构建镜像并发布到 ghcr.io
 - 双平台流水线：GitHub Actions 发布到 GHCR，[CNB 云原生构建](./docs/cnb-build.md) 发布到 CNB Docker 制品库
 - 离线依赖构建：后端使用 wheelhouse（预编译 wheel）安装，前端使用 pnpm 全局存储缓存，构建不依赖现场联网解析
 
@@ -254,7 +254,7 @@ pnpm build                     # 构建, 产物输出到 ../web
 
 - 数据库与日志通过 `data/`、`logs/` 目录挂载，升级镜像不丢数据
 - 升级后容器启动时自动执行数据库迁移与管理员初始化
-- 不同架构（x86_64 / ARM64）镜像仅在发布版本 tag 时构建，Docker 自动匹配架构
+- 前后端镜像均为 `linux/amd64` 单架构，`docker-compose.yml` 中 api 固定 `platform: linux/amd64`（离线 wheelhouse 仅含 x86_64 wheel）；ARM 机器需自行启用模拟或从源码构建
 
 ## 注意事项
 

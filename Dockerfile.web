@@ -1,5 +1,8 @@
 # 服务器本地部署用: 直接使用已构建好的 web/ 静态产物, 跳过 npm 编译
 FROM nginx:alpine
 
+ARG VERSION=dev
 COPY web/ /usr/share/nginx/html/
 COPY config/nginx-frontend.conf /etc/nginx/nginx.conf
+# 与 Dockerfile.frontend 保持一致, 替换 index.html 中的版本号占位符
+RUN sed -i "s|__VERSION__|${VERSION}|g" /usr/share/nginx/html/index.html || true
