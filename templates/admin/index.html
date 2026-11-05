@@ -9,6 +9,15 @@
 {% block nav-sidebar %}{% endblock %}
 
 {% block content %}
+{% cloud_stats as stats %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 20px;">
+  {% for item in stats %}
+    <a href="{{ item.url }}" style="display:block;padding:14px 16px;border-radius:8px;border:1px solid var(--hairline-color,#e5e7eb);background:var(--body-bg,#fff);text-decoration:none;color:inherit;">
+      <div style="font-size:12px;color:var(--body-quiet-color,#6b7280);">{{ item.label }}</div>
+      <div style="margin-top:4px;font-size:24px;font-weight:600;line-height:1.1;">{{ item.value }}</div>
+    </a>
+  {% endfor %}
+</div>
 <div id="content-main">
   <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;">
     {% with ordered="aws users linode azure do auth" %}

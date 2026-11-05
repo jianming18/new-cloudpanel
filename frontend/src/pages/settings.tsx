@@ -1,8 +1,7 @@
-import { ExternalLink, Info, Settings2 } from 'lucide-react'
+import { Info, Settings2 } from 'lucide-react'
 
 import { PagePanel } from '@/components/page-panel'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
@@ -30,7 +29,7 @@ export function SettingsPage() {
               <Settings2 className="h-4 w-4 text-muted-foreground" />
               站点配置
             </CardTitle>
-            <CardDescription>配置项由后端维护, 需要修改请前往管理后台。</CardDescription>
+            <CardDescription>站点级配置由后端维护, 前端仅做展示。</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -85,21 +84,6 @@ export function SettingsPage() {
                   <span className="font-mono text-xs">{version}</span>
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>管理后台</CardTitle>
-              <CardDescription>用户管理、账号数据维护等高级操作在 Django Admin 中完成。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" asChild>
-                <a href="/api/admin/" target="_blank" rel="noreferrer">
-                  <ExternalLink className="h-4 w-4" />
-                  打开管理后台
-                </a>
-              </Button>
             </CardContent>
           </Card>
         </div>
